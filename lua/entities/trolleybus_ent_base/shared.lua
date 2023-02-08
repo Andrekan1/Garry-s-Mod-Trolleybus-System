@@ -27,7 +27,7 @@ end
 local function NetworkVarOptFloat(self,name,decimals)
 	local mp = 10^(decimals or 2)
 	local internal = "-"..name
-	
+
 	NetworkVar(self,"Int",internal)
 
 	local set,get = self["Set"..internal],self["Get"..internal]
@@ -74,6 +74,7 @@ function ENT:SetupDataTables()
 	NetworkVar(self,"Float","PoleStateTimeRight")
 	NetworkVar(self,"Entity","DriverSeat")
 	NetworkVar(self,"Entity","Driver")
+	NetworkVar(self,"Entity","TrolleybusOwner")
 	NetworkVar(self,"Entity","Trailer")
 	NetworkVar(self,"Entity","Trolleybus")
 	NetworkVar(self,"Angle","PoleMoveAngLeft")
@@ -85,11 +86,11 @@ end
 
 function ENT:DoorIsOpened(name,fullyclosed)
 	local val = self:GetNWVar("Doors."..name,false)
-	
+
 	if CLIENT and !val and fullyclosed and self.Doors and self.Doors[name] then
 		val = self.Doors[name].MoveState>0
 	end
-	
+
 	return val
 end
 
@@ -101,7 +102,7 @@ function ENT:GetHighVoltage()
 			return IsValid(self:GetTrailer()) and self:GetTrailer().HasPoles and self:GetTrailer():GetHighVoltage() or 0
 		end
 	end
-	
+
 	return self:GetPowerFromCN()
 end
 
@@ -125,7 +126,7 @@ function ENT:UPSToKPH(ups) --Units per second to kilometers per hour
 	local mps = ups/Trolleybus_System.UnitsPerMeter
 	local mph = mps*3600
 	local kph = mph/1000
-	
+
 	return kph
 end
 
@@ -133,17 +134,17 @@ function ENT:KPHToUPS(kph) --Kilometers per hour to units per second
 	local mph = kph*1000
 	local mps = mph/3600
 	local ups = mps*Trolleybus_System.UnitsPerMeter
-	
+
 	return ups
 end
 
 function ENT:SetupSystems()
 	self.Systems = {}
-	
+
 	self:LoadSystems()
-	
+
 	self.SystemsLoaded = true
-	
+
 	if self.SpawnSettings then
 		for k,v in ipairs(self.SpawnSettings) do
 			if v.setup then v.setup(self,self._SpawnSettings[k]) end
@@ -178,17 +179,17 @@ end
 
 function ENT:GetMainTrolleybus(orself)
 	local ent = self.IsTrailer and self:GetTrolleybus() or self
-	
+
 	return orself and (IsValid(ent) and ent or self) or ent
 end
 
 function ENT:GetSpawnSetting(index)
 	if !self.SpawnSettings then return end
-	
+
 	if isstring(index) and self._SpawnSettingsNames then
 		index = self._SpawnSettingsNames[index]
 	end
-	
+
 	if SERVER then
 		return self._SpawnSettings[index]
 	else
@@ -203,14 +204,14 @@ function ENT:GetSpawnSetting(index)
 					end
 				end
 			end
-			
+
 			if self.SpawnSettings[index] then
 				local value = self.SpawnSettings[index].default
-			
+
 				if self.SpawnSettings[index].type=="ComboBox" then
 					value = self.SpawnSettings[index].choices[value].value or value
 				end
-				
+
 				return value
 			end
 		end
@@ -296,7 +297,7 @@ end
 function ENT:PlayerIsInside(ply)
 	local pos = Trolleybus_System.EyePos(ply)
 	local lpos = self:WorldToLocal(pos)
-	
+
 	return lpos:WithinAABox(self:GetModelBounds())
 end
 
@@ -308,15 +309,15 @@ end
 
 local function SystemsHook(self,name,skip,...)
 	if !self.SystemsLoaded or !self.Systems then return end
-	
+
 	for k,v in pairs(self.Systems) do
 		if skip and skip[k] then continue end
-		
+
 		local func = v[name]
-		
+
 		if func then
 			local args = {func(v,...)}
-			
+
 			if args[1]!=nil then
 				return args
 			end
@@ -326,24 +327,24 @@ end
 
 function ENT:SystemsHook(name,...)
 	if !self.SystemsLoaded then return end
-	
+
 	local skipsys
 	if self.IsTrailer then
 		skipsys = self.Systems
-		
+
 		local result = SystemsHook(self,name,nil,...)
 		if result then if result[2]!=nil then return unpack(result) else return result[1] end end
 	end
-	
+
 	local result = SystemsHook(self:GetMainTrolleybus(),name,skipsys,...)
 	if result then if result[2]!=nil then return unpack(result) else return result[1] end end
 end
 
 function ENT:SystemsEvent(main,name,...)
 	if !self.SystemsLoaded then return end
-	
+
 	local bus = main and self:GetMainTrolleybus() or self
-	
+
 	for k,v in pairs(bus.SystemsLoaded and bus.Systems or {}) do
 		if v[name] then v[name](v,...) end
 	end
