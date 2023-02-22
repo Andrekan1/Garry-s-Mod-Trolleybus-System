@@ -32,7 +32,7 @@ local function GetChanges(olddata,newdata)
 			changes[k] = v
 		end
 	end
-	
+
 	for k,v in pairs(olddata) do
 		if newdata[k]==nil then
 			changes = changes or {}
@@ -188,7 +188,7 @@ net.Receive("Trolleybus_System.ContactNetworkEditor",function(len,ply)
 			for k,v in pairs(v.Data.Properties) do
 				object:SetProperty(k,v)
 			end
-			
+
 			object:UpdateData(v.Data.Data)
 
 			object:SetPos(v.Pos)
@@ -213,6 +213,20 @@ net.Receive("Trolleybus_System.ContactNetworkEditor",function(len,ply)
 
 		for k,v in pairs(data) do
 			upd[v.ObjectName] = Trolleybus_System.ContactNetwork.GetObjectData(v.ObjectName)
+		end
+	elseif cmd==8 then
+		local size = net.ReadUInt(32)
+		local data = net.ReadData(size)
+		data = util.JSONToTable(util.Decompress(data))
+		local objects = {}
+		for _,name in pairs(data) do
+			objects[name] = Trolleybus_System.ContactNetwork.GetObject(name)
+		end
+		for name,dt in pairs(objects) do
+			if IsValid(dt) then
+				Trolleybus_System.ContactNetwork.RemoveObject(name)
+				upd[name] = false
+			end
 		end
 	end
 
